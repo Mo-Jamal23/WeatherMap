@@ -1,0 +1,151 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="WeatherMap - search any place on Earth and see its live weather on an interactive map.">
+  <title>WeatherMap</title>
+
+  <link rel="icon" href="assets/favicon.svg" type="image/svg+xml">
+
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Roboto+Slab:wght@600;700&family=Roboto:wght@400;500;700&display=swap" rel="stylesheet">
+
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css"
+        integrity="sha512-h9FcoyWjHcOcmEVkxOfTLnmZFWIH0iZhZT1H2TbOq55xssQGEJHEaIm+PgoUaZbRvQTNTluNOEfb1ZRy6D3BOw=="
+        crossorigin="anonymous" referrerpolicy="no-referrer">
+
+  <link rel="stylesheet" href="css/style.css?v=groq4">
+</head>
+<body>
+  <header class="site-header">
+    <div class="container header-inner">
+      <h1 class="page-title">
+        <img src="assets/favicon.svg" alt="" class="title-logo" width="40" height="40">
+        WeatherMap
+      </h1>
+      <div class="header-actions">
+        <button type="button" id="themeToggle" class="icon-btn" aria-label="Toggle dark mode" title="Toggle dark mode">🌙</button>
+        <button type="button" id="settingsBtn" class="icon-btn" aria-label="API key settings" title="API key settings">⚙️</button>
+      </div>
+    </div>
+  </header>
+
+  <main class="container">
+    <section class="search-panel" aria-labelledby="searchHeading">
+      <h2 id="searchHeading" class="visually-hidden">Search for a location</h2>
+
+      <form id="searchForm" class="search-form" novalidate autocomplete="off">
+        <label for="locationInput" class="search-label">Please enter a location</label>
+        <div class="search-row">
+          <input type="text" id="locationInput" name="location" class="search-input"
+                 placeholder="e.g. Port Sudan, Eiffel Tower, 221B Baker Street…" required maxlength="120">
+          <button type="submit" id="searchBtn" class="btn btn-primary">Get Weather</button>
+          <button type="button" id="locateBtn" class="btn btn-ghost" title="Use my current location">📍 My Location</button>
+        </div>
+      </form>
+
+      <div class="toolbar">
+        <div class="segmented" role="group" aria-label="Temperature unit">
+          <button type="button" class="seg-btn is-active" data-unit="metric" aria-pressed="true">°C</button>
+          <button type="button" class="seg-btn" data-unit="imperial" aria-pressed="false">°F</button>
+        </div>
+        <div class="segmented" role="group" aria-label="OpenWeatherMap response format">
+          <button type="button" class="seg-btn is-active" data-format="json" aria-pressed="true">JSON</button>
+          <button type="button" class="seg-btn" data-format="xml" aria-pressed="false">XML</button>
+        </div>
+        <p class="hint">Tip: click anywhere on the map for its weather · press <kbd>/</kbd> to search</p>
+      </div>
+
+      <div id="favoritesBar" class="favorites" aria-live="polite">
+        <span class="favorites-label">★ Favorites:</span>
+        <ul id="favoritesList" class="favorites-list"></ul>
+        <p id="favoritesEmpty" class="favorites-empty">No favorites yet — tap ☆ in a weather card to save a city.</p>
+      </div>
+    </section>
+
+    <div id="alerts" class="alerts" aria-live="assertive"></div>
+
+    <section class="map-section" aria-label="Weather map">
+      <div id="map" class="map"></div>
+      <div id="loader" class="loader" hidden>
+        <div class="spinner" aria-hidden="true"></div>
+        <p id="loaderText" class="loader-text">Loading…</p>
+      </div>
+    </section>
+  </main>
+
+  <footer class="site-footer">
+    <div class="container">
+      <p>Weather data © <a href="https://openweathermap.org/" target="_blank" rel="noopener">OpenWeatherMap</a> ·
+         Geocoding © <a href="https://nominatim.org/" target="_blank" rel="noopener">Nominatim</a> ·
+         Map © <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">OpenStreetMap</a> contributors</p>
+    </div>
+  </footer>
+
+  <button type="button" id="chatToggle" class="chat-toggle" aria-label="Open weather assistant" aria-expanded="false" aria-controls="chatPanel">
+    <span aria-hidden="true">💬</span>
+    <span class="chat-toggle-text">Ask AI</span>
+  </button>
+
+  <section id="chatPanel" class="chat-panel" aria-label="Weather assistant" hidden>
+    <header class="chat-header">
+      <div class="chat-heading">
+        <h2 class="chat-title">🤖 Weather Assistant</h2>
+        <p id="chatMeta" class="chat-meta"></p>
+      </div>
+      <div class="chat-header-actions">
+        <button type="button" id="chatClear" class="chat-icon-btn" aria-label="Clear conversation" title="Clear conversation">🗑</button>
+        <button type="button" id="chatClose" class="chat-icon-btn" aria-label="Close assistant" title="Close">×</button>
+      </div>
+    </header>
+    <div id="chatLog" class="chat-log" role="log" aria-live="polite"></div>
+    <div id="chatSuggestions" class="chat-suggestions"></div>
+    <form id="chatForm" class="chat-form" autocomplete="off">
+      <input type="text" id="chatInput" class="search-input chat-input" placeholder="Ask about the weather…" maxlength="500" dir="auto" aria-label="Your question">
+      <button type="submit" id="chatSend" class="chat-send" aria-label="Send question">➤</button>
+    </form>
+  </section>
+
+  <dialog id="settingsDialog" class="dialog">
+    <form id="settingsForm" method="dialog" class="dialog-body">
+      <h2 class="dialog-title">API keys</h2>
+      <p class="dialog-text">
+        Keys are stored only in this browser (localStorage) and are never written to the project files.
+      </p>
+      <label for="apiKeyInput" class="search-label">OpenWeatherMap key (required)</label>
+      <div class="key-row">
+        <input type="password" id="apiKeyInput" class="search-input" placeholder="32-character key" spellcheck="false" autocomplete="off">
+        <button type="button" id="clearKeyBtn" class="btn btn-ghost btn-sm">Remove</button>
+      </div>
+      <p class="dialog-hint">
+        Free key at <a href="https://home.openweathermap.org/api_keys" target="_blank" rel="noopener">openweathermap.org</a>. New keys can take up to ~2 hours to activate.
+      </p>
+      <label for="openaiKeyInput" class="search-label">AI assistant key (optional, free from Groq)</label>
+      <div class="key-row">
+        <input type="password" id="openaiKeyInput" class="search-input" placeholder="gsk_…" spellcheck="false" autocomplete="off">
+        <button type="button" id="clearAiKeyBtn" class="btn btn-ghost btn-sm">Remove</button>
+      </div>
+      <p class="dialog-hint">
+        Get a free key (no credit card) at <a href="https://console.groq.com/keys" target="_blank" rel="noopener">console.groq.com/keys</a>.
+        Anyone who opens your browser's developer tools can read a key used in a front-end app, so use a low-limit key.
+      </p>
+      <label class="checkbox">
+        <input type="checkbox" id="showKey"> Show keys
+      </label>
+      <div class="dialog-actions">
+        <button type="button" id="cancelKeyBtn" class="btn btn-ghost">Cancel</button>
+        <button type="submit" id="saveKeyBtn" class="btn btn-primary">Save</button>
+      </div>
+    </form>
+  </dialog>
+
+  <div id="toast" class="toast" role="status" aria-live="polite" hidden></div>
+
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"
+          integrity="sha512-puJW3E/qXDqYp9IfhAI54BJEaWIfloJ7JWs7OeD5i6ruC9JZL1gERT1wjtwXFlh7CjE7ZJ+/vcRZRkIYIb6p4g=="
+          crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+  <script type="module" src="js/app.js?v=groq4"></script>
+</body>
+</html>
